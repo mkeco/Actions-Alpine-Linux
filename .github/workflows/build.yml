@@ -1,6 +1,7 @@
 on:
+  workflow_dispatch:          # ← 新增：允许你在网页上手动点击“Run workflow”
   watch:
-    types: started
+    types: [started]
 jobs:
   prepare_release:
     runs-on: ubuntu-22.04

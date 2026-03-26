@@ -100,7 +100,7 @@ jobs:
 
     strategy:
       matrix:
-        CPU: [rk3328, rk3528, rk3399, rk3566, rk3568, rk3576, rk3588]
+        CPU: [rk3576]
     steps:
     - name: Checkout
       uses: actions/checkout@main
@@ -186,7 +186,7 @@ jobs:
           OS_DIR=alpine-linux-arm64
           mkdir ${OS_DIR}
 
-          cp prebuilt/parameter.template ${OS_DIR}/parameter.txt
+          cp prebuilt/parameter-plain.txt ${OS_DIR}/parameter.txt
           # Initialize the size, but it is not the final value, the build-rootfs-img.sh script will overwrite it
           sed -i "s/<ROOTFS_PARTITION_SIZE>/0x000c0000/g" ${OS_DIR}/parameter.txt
           sed -i "s/<USERDATA_PARTITION_ADDR>/0x00106000/g" ${OS_DIR}/parameter.txt
@@ -195,6 +195,8 @@ jobs:
             ../../plat/${{ matrix.CPU }}/custom.sh $PWD/rootfs
           fi
           cp -af ../../plat/rockchip-common/alsa/* $PWD/rootfs/
+
+          touch rootfs/etc/.overlayfs.disabled
 
           # build uboot
           UBOOT_SRC=uboot ./build-uboot.sh ${OS_DIR}
@@ -219,13 +221,7 @@ jobs:
           ./mk-sd-image.sh ${OS_DIR} ${FILENAME_SD}
           mv out/${FILENAME_SD} ../../artifact/
 
-          # build sd-to-emmc image
-          FILENAME_SD2EMMC=${{ matrix.CPU }}-eflasher-alpine-linux-arm64-$(date +%Y-%m-%d).img
-          echo "##[set-output name=img_filename_sd2emmc;]$FILENAME_SD2EMMC"
-          wget http://112.124.9.243/dvdfiles/${{ matrix.CPU }}/images-for-eflasher/emmc-flasher-images.tgz
-          tar xzf emmc-flasher-images.tgz
-          RAW_SIZE_MB=8000 ./mk-emmc-image.sh ${OS_DIR} filename=${FILENAME_SD2EMMC} autostart=yes
-          mv out/${FILENAME_SD2EMMC} ../../artifact/
+      
 
           # package image-assets-xyz.tgz
           IMAGE_ASSETS_PKG=image-assets-${{ matrix.CPU }}.tgz
@@ -258,12 +254,5 @@ jobs:
         tag: ${{ needs.prepare_release.outputs.release_tag }}
         overwrite: true
 
-    - name: Upload sd-to-emmc image to release
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: ./artifact/${{ steps.build_sd_image.outputs.img_filename_sd2emmc }}.gz
-        asset_name: ${{ steps.build_sd_image.outputs.img_filename_sd2emmc }}.gz
-        tag: ${{ needs.prepare_release.outputs.release_tag }}
-        overwrite: true
+    
 
